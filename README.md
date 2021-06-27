@@ -10,6 +10,8 @@ If you want to run arbitrary commands in a TeXLive environment, use [texlive-act
 
 ## Inputs
 
+Each input is provided as a key inside the `with` section of the action.
+
 * `root_file`
 
     The root LaTeX file to be compiled. This input is required. You can also pass multiple files as a multi-line string to compile multiple documents. For example:
@@ -39,7 +41,7 @@ If you want to run arbitrary commands in a TeXLive environment, use [texlive-act
 
 * `pre_compile`
 
-    Arbitrary bash codes to be executed before compiling LaTeX documents. For example, `pre_compile: "tlmgr update --all"` to update all TeXLive packages.
+    Arbitrary bash codes to be executed before compiling LaTeX documents. For example, `pre_compile: "tlmgr update --self && tlmgr update --all"` to update all TeXLive packages.
 
 * `post_compile`
 
@@ -112,7 +114,7 @@ To enable `--shell-escape`, set the `latexmk_shell_escape` input.
 ### Where is the PDF file? How to upload it?
 
 The PDF file will be in the same folder as that of the LaTeX source in the CI environment. It is up to you on whether to upload it to some places. Here are some example.
-* You can use [`@actions/upload-artifact`](https://github.com/actions/upload-artifact) to upload PDF file to the workflow tab. For example you can add
+* You can use [`@actions/upload-artifact`](https://github.com/actions/upload-artifact) to upload a zip containing the PDF file to the workflow tab. For example you can add
 
   ```yaml
   - uses: actions/upload-artifact@v2
@@ -121,8 +123,30 @@ The PDF file will be in the same folder as that of the LaTeX source in the CI en
       path: main.pdf
   ```
 
-* You can use [`@actions/upload-release-asset`](https://github.com/actions/upload-release-asset) to upload PDF file to the Github Release.
+  It will result in a `PDF.zip` being uploaded with `main.pdf` contained inside.
+
+* You can use [`@softprops/action-gh-release`](https://github.com/softprops/action-gh-release) to upload PDF file to the Github Release.
 * You can use normal shell tools such as `scp`/`git`/`rsync` to upload PDF file anywhere. For example, you can git push to the `gh-pages` branch in your repo, so you can view the document using Github Pages.
+
+### How to add additional paths to the LaTeX input search path?
+
+Sometimes you may have custom package (`.sty`) or class (`.cls`) files in other directories. If you want to add these directories to the LaTeX input search path, you can add them in `TEXINPUTS` environment variable. For example:
+
+```yaml
+- name: Download custom template
+  run: |
+    curl -OL https://example.com/custom_template.zip
+    unzip custom_template.zip
+- uses: xu-cheng/latex-action@v2
+  with:
+    root_file: main.tex
+  env:
+    TEXINPUTS: ".:./custom_template//:"
+```
+
+Noted that you should NOT use `{{ github.workspace }}` or `$GITHUB_WORKSPACE` in `TEXINPUTS`. This action works in a separated docker container, where the workspace directory is mounted into it. Therefore, the workspace directory inside the docker container is different from `github.workspace`.
+
+You can find more information of `TEXINPUTS` [here](https://tex.stackexchange.com/a/93733).
 
 ### It fails due to `xindy` cannot be found.
 
